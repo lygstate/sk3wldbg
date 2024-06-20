@@ -1181,9 +1181,12 @@ struct TEB_
 
             //end of Windows 8 members
 
-            //members that follow available on Windows 10 and up (currently unknown)
+            //members that follow available on Windows 10 and up
+            QWORD               ReservedForCrt;                             //0x0FE8
 
-            BYTE                        ReservedForWin10[0x18];                     //0x0FE8
+            GUID_               EffectiveContainerId;                       //0x0FF0
+
+            //end of Windows 10/11
         } afterVista;
     } dwordFE0;
 }; //struct TEB_

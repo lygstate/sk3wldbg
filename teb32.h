@@ -25,8 +25,8 @@
 //      mov eax, fs:[30h]   //eax = PEB_
 //
 // Or, by using the following Visual C++ compiler intrinsics:
-//      voidp pTeb = __readfsdword(0x18);
-//      voidp pPeb = __readfsdword(0x30);
+//      PVOID pTeb = __readfsdword(0x18);
+//      PVOID pPeb = __readfsdword(0x30);
 //
 // [BUGS]
 // This header file is meant mostly for documentation purposes as an alternative to the various tables found
@@ -58,11 +58,11 @@
 //     unsigned integer types:     BYTE, WORD,  DWORD and QWORD
 //     signed integer types:       CHAR, INT16, INT32 and INT64
 //
-// NOTE: voidp and DWORD may be used interchangeably on 32-bit operating systems, however I attempted
-//       to use voidp (or typed structure pointer where possible) where I was sure the member was to
+// NOTE: PVOID and DWORD may be used interchangeably on 32-bit operating systems, however I attempted
+//       to use PVOID (or typed structure pointer where possible) where I was sure the member was to
 //       hold a pointer.  Otherwise and where members were to hold padding ints (of any size), I
-//       avoided the use of pointer types even when originally declared to be of type voidp. Also I
-//       retained the use of some aliases, such as BOOLEAN, NTSTATUS, _HANDLE, etc. only for the
+//       avoided the use of pointer types even when originally declared to be of type PVOID. Also I
+//       retained the use of some aliases, such as BOOLEAN, NTSTATUS, HANDLE, etc. only for the
 //       purpose of preserving the meaning of the associated structure members.
 //
 // [MICROSOFT FIRST DOCUMENTS THE TEB_ and PEB_]
@@ -95,7 +95,7 @@
 //          BYTE Reserved1[2];
 //          BYTE BeingDebugged;
 //          BYTE Reserved2[229];
-//          voidp Reserved3[59];
+//          PVOID Reserved3[59];
 //          ULONG SessionId;
 //      } PEB_, *PPEB;
 //
@@ -107,13 +107,13 @@
 //      //
 //      struct TEB_ {
 //          BYTE Reserved1[1952];
-//          voidp Reserved2[412];
-//          voidp TlsSlots[64];
+//          PVOID Reserved2[412];
+//          PVOID TlsSlots[64];
 //          BYTE Reserved3[8];
-//          voidp Reserved4[26];
-//          voidp ReservedForOle;  // Windows 2000 only
-//          voidp Reserved5[4];
-//          voidp TlsExpansionSlots;
+//          PVOID Reserved4[26];
+//          PVOID ReservedForOle;  // Windows 2000 only
+//          PVOID Reserved5[4];
+//          PVOID TlsExpansionSlots;
 //      } TEB_;
 //      typedef TEB_ *PTEB;
 //
@@ -137,223 +137,20 @@
 
 #include <stdint.h>
 
-//disable some Visual C++ warnings
-#ifdef _MSC_VER
-    //when compiling as C
-    #pragma warning (disable:4214) //Warning Level 4: C4214: nonstandard extension used : bit field types other than int
-
-    //"#pragma pack(1)" not needed as Microsoft has designed all structure members to be on natural boundaries
-
-    #ifndef STDCALL
-        #define STDCALL         __stdcall
-    #endif
-    #ifndef CDECL
-        #define CDECL           __cdecl
-    #endif
-#else
-    //assume GCC
-    #ifndef STDCALL
-        #define STDCALL         __attribute__ ((stdcall))
-    #endif
-    #ifndef CDECL
-        #define CDECL           __attribute__ ((cdecl))
-    #endif
-#endif
-
-typedef uint32_t voidp;     //proxy for void*
-typedef uint32_t CHARp;     //proxy for CHAR*
-typedef uint32_t WCHARp;     //proxy for WCHAR*
-typedef uint32_t DWORDp;     //proxy for DWORD*
-typedef voidp    _HANDLE;
-
-#ifndef _MSC_VER
-
-//
-// Base types
-//
-
-//This is for 32 bit so we need pointer fields to size out to 32 bits even when
-//building on 64-bit systems
-
-typedef uint8_t           BYTE;
-typedef int8_t            CHAR;
-typedef uint16_t          WORD;
-typedef int16_t           INT16;
-typedef uint32_t          DWORD;
-typedef int32_t           INT32;
-typedef BYTE              BOOLEAN;
-typedef BYTE              UCHAR;
-typedef voidp             _HANDLE;
-typedef WORD              WCHAR;
-typedef WORD              USHORT;
-typedef DWORD             LCID;
-typedef DWORD             KAFFINITY;
-typedef DWORD             ULONG;
-
-#endif //#ifdef WANT_ALL_WINDOWS_H_DEFINITIONS
-
-
-//always declare 64-bit types
-
-#ifdef _MSC_VER
-    //Visual C++
-    typedef unsigned __int64    QWORD;
-    typedef __int64             INT64;
-#else
-    //GCC
-    typedef uint64_t  QWORD;
-    typedef int64_t   INT64;
-#endif
-
-
-//#ifdef WANT_ALL_WINDOWS_H_DEFINITIONS
+#include <winternl.h>
 
 //
 // General-purpose structures
 //
-
-union LARGE_INTEGER_
-{
-    struct
-    {
-        DWORD   LowPart;
-        INT32   HighPart;
-    } u;
-    INT64       QuadPart;
-};
-
-union ULARGE_INTEGER_
-{
-    struct
-    {
-       DWORD LowPart;
-       DWORD HighPart;
-    } u;
-    QWORD QuadPart;
-};
-
-struct GUID_
-{
-    DWORD   Data1;
-    WORD    Data2;
-    WORD    Data3;
-    BYTE    Data4[8];
-};
-
-typedef voidp LIST_ENTRY_p;
-
-struct LIST_ENTRY_
-{
-    LIST_ENTRY_p Flink;
-    LIST_ENTRY_p Blink;
-};
-
-struct RTL_CRITICAL_SECTION_;
-
-typedef voidp RTL_CRITICAL_SECTION_p;
-
-struct RTL_CRITICAL_SECTION_
-{
-    WORD                    Type;
-    WORD                    CreatorBackTraceIndex;
-    RTL_CRITICAL_SECTION_p   CriticalSection;
-    LIST_ENTRY_              ProcessLocksList;
-    DWORD                   EntryCount;
-    DWORD                   ContentionCount;
-    DWORD                   Flags;
-    WORD                    CreatorBackTraceIndexHigh;
-    WORD                    SpareUSHORT;
-};
-
-typedef voidp RTL_CRITICAL_SECTION_DEBUG_p;
-
-struct RTL_CRITICAL_SECTION_DEBUG_
-{
-    RTL_CRITICAL_SECTION_DEBUG_p DebugInfo;
-    INT32                       LockCount;
-    INT32                       RecursionCount;
-    _HANDLE                      OwningThread;
-    _HANDLE                      LockSemaphore;
-    DWORD                       SpinCount;
-};
-
-//#endif //WANT_ALL_WINDOWS_H_DEFINITIONS
-
-
-struct CLIENT_ID_
-{
-     DWORD  ProcessId;
-     DWORD  ThreadId;
-};
-
-struct PROCESSOR_NUMBER_
-{
-    WORD    Group;
-    BYTE    Number;
-    BYTE    Reserved;
-};
-
-struct STRING_
-{
-    WORD    Length;
-    WORD    MaximumLength;
-    CHARp   Buffer;
-};
-
-struct UNICODE_STRING_
-{
-    WORD    Length;
-    WORD    MaximumLength;
-    WCHARp  Buffer;
-};
 
 
 //
 // Exception-specific structures and definitions
 //
 
-//CONTEXT_ flags
-#define CONTEXT_i386                    0x00010000                      // this assumes that i386 and
-#define CONTEXT_i486                    0x00010000                      // i486 have identical CONTEXT_ records
-#define CONTEXT_CONTROL                 (CONTEXT_i386 | 0x00000001L)    // SS:SP, CS:IP, FLAGS, BP
-#define CONTEXT_INTEGER                 (CONTEXT_i386 | 0x00000002L)    // AX, BX, CX, DX, SI, DI
-#define CONTEXT_SEGMENTS                (CONTEXT_i386 | 0x00000004L)    // DS, ES, FS, GS
-#define CONTEXT_FLOATING_POINT          (CONTEXT_i386 | 0x00000008L)    // 387 state
-#define CONTEXT_DEBUG_REGISTERS         (CONTEXT_i386 | 0x00000010L)    // DB 0-3,6,7
-#define CONTEXT_EXTENDED_REGISTERS      (CONTEXT_i386 | 0x00000020L)    // cpu specific extensions
-#define CONTEXT_FULL                    (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS)
-#define CONTEXT_ALL                     (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS | CONTEXT_EXTENDED_REGISTERS)
-
-//exception flags
-#define EXCEPTION_NONCONTINUABLE        0x1     // Noncontinuable exception
-#define EXCEPTION_UNWINDING             0x2     // Unwind is in progress; same as EH_UNWINDING
-#define EXCEPTION_EXIT_UNWIND           0x4     // Exit unwind is in progress; same as EH_EXIT_UNWIND
-#define EXCEPTION_STACK_INVALID         0x8     // Stack out of limits or unaligned
-#define EXCEPTION_NESTED_CALL           0x10    // Nested exception handler call
-#define EXCEPTION_TARGET_UNWIND         0x20    // Target unwind in progress
-#define EXCEPTION_COLLIDED_UNWIND       0x40    // Collided exception handler call
-#define EXCEPTION_UNWIND                (EXCEPTION_UNWINDING | EXCEPTION_EXIT_UNWIND | EXCEPTION_TARGET_UNWIND | EXCEPTION_COLLIDED_UNWIND)
-#define IS_UNWINDING(Flag)              ((Flag & EXCEPTION_UNWIND) != 0)
-#define IS_DISPATCHING(Flag)            ((Flag & EXCEPTION_UNWIND) == 0)
-#define IS_TARGET_UNWIND(Flag)          (Flag & EXCEPTION_TARGET_UNWIND)
-
-//msvc exception filter expression return codes
-#define EXCEPTION_EXECUTE_HANDLER       1   //same as FILTER_ACCEPT
-#define EXCEPTION_CONTINUE_SEARCH       0   //same as FILTER_CONTINUE_SEARCH
-#define EXCEPTION_CONTINUE_EXECUTION    -1  //same as FILTER_DISMISS
-
 //#ifdef WANT_ALL_WINDOWS_H_DEFINITIONS
 
-//exception handler (disposition) return values
-enum EXCEPTION_DISPOSITION_
-{
-    _ExceptionContinueExecution,         //0; same as DISPOSITION_DISMISS, _XCPT_CONTINUE_EXECUTION
-    _ExceptionContinueSearch,            //1; same as DISPOSITION_CONTINUE_SEARCH, _XCPT_CONTINUE_SEARCH
-    _ExceptionNestedException,           //2; same as DISPOSITION_NESTED_EXCEPTION
-    _ExceptionCollidedUnwind             //3; same as DISPOSITION_COLLIDED_UNWIND
-};
-
-typedef voidp EXCEPTION_RECORD_p;
+typedef PVOID EXCEPTION_RECORD_p;
 
 #define EXCEPTION_MAXIMUM_PARAMETERS 15
 struct EXCEPTION_RECORD_ //size=0x50
@@ -361,7 +158,7 @@ struct EXCEPTION_RECORD_ //size=0x50
     DWORD               ExceptionCode;                                          //0x00
     DWORD               ExceptionFlags;                                         //0x04 - see possible values above
     EXCEPTION_RECORD_p   ExceptionRecord;                                        //0x08
-    voidp               ExceptionAddress;                                       //0x0C
+    PVOID               ExceptionAddress;                                       //0x0C
     DWORD               NumberParameters;                                       //0x10
     DWORD               ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];     //0x14
 };
@@ -417,7 +214,7 @@ struct CONTEXT_ //size=0x2CC
     BYTE                ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];     //0xCC
 };
 
-typedef voidp CONTEXT_p;
+typedef PVOID CONTEXT_p;
 
 //used with UnhandledExceptionFilter()/SetUnhandledExceptionFilter() and newer Vectored Exception handling functions
 struct EXCEPTION_POINTERS_
@@ -430,7 +227,7 @@ struct EXCEPTION_POINTERS_
 
 struct EXCEPTION_REGISTRATION_;
 
-typedef voidp EXCEPTION_REGISTRATION_p;
+typedef PVOID EXCEPTION_REGISTRATION_p;
 
 //dispatcher CONTEXT_ is reserved for exception handler implementation (e.g. compilers)
 struct DISPATCHER_CONTEXT_
@@ -438,13 +235,8 @@ struct DISPATCHER_CONTEXT_
     EXCEPTION_REGISTRATION_p RegistrationPointer;
 };
 
-//exception handler signatures
-//typedef EXCEPTION_DISPOSITION_ (CDECL *ExceptionHandler)(EXCEPTION_RECORD_p ExceptionRecord, EXCEPTION_REGISTRATION_p EstablisherFrame, CONTEXT_p ContextRecord, DISPATCHER_CONTEXT_p DispatcherContext); //same as EXCEPTION_ROUTINE and _except_handler
-//typedef INT32 (STDCALL *TopLevelExceptionFilter)(EXCEPTION_POINTERS_* ExceptionInfo); //same as TOP_LEVEL_EXCEPTION_FILTER for SetUnhandledExceptionFilter();
-//typedef INT32 (STDCALL *VectoredExceptionHandler)(EXCEPTION_POINTERS_* ExceptionInfo); //same as PVECTORED_EXCEPTION_HANDLER and above signature used with AddVectoredExceptionHandler(), RemoveVectoredExceptionHandler() for XP/WS03 and up
-
-typedef voidp ExceptionHandler_p;
-typedef voidp EXCEPTION_REGISTRATION_p;
+typedef PVOID ExceptionHandler_p;
+typedef PVOID EXCEPTION_REGISTRATION_p;
 
 //stack exception frame a.k.a. EXCEPTION_REGISTRATION_RECORD
 struct EXCEPTION_REGISTRATION_
@@ -459,41 +251,41 @@ struct EXCEPTION_REGISTRATION_
 //
 
 //forward declarations for unknown structures
-struct ACTIVATION_CONTEXT_DATA_ {voidp dummy;}; //XP and up
-struct ASSEMBLY_STORAGE_MAP_ {voidp dummy;};       //XP and up
-struct FLS_CALLBACK_INFO_ {voidp dummy;};             //WS03 and up
+struct ACTIVATION_CONTEXT_DATA_ {PVOID dummy;}; //XP and up
+struct ASSEMBLY_STORAGE_MAP_ {PVOID dummy;};       //XP and up
+struct FLS_CALLBACK_INFO_ {PVOID dummy;};             //WS03 and up
 
 struct RTL_DRIVE_LETTER_CURDIR_
 {
      WORD       Flags;
      WORD       Length;
      DWORD      TimeStamp;
-     STRING_     DosPath;
+     STRING     DosPath;
 };
 
 struct PEB_LDR_DATA_
 {
      DWORD          Length;
      BYTE           Initialized;
-     voidp          SsHandle;
-     LIST_ENTRY_     InLoadOrderModuleList;
-     LIST_ENTRY_     InMemoryOrderModuleList;
-     LIST_ENTRY_     InInitializationOrderModuleList;
-     voidp          EntryInProgress;
+     PVOID          SsHandle;
+     LIST_ENTRY     InLoadOrderModuleList;
+     LIST_ENTRY     InMemoryOrderModuleList;
+     LIST_ENTRY     InInitializationOrderModuleList;
+     PVOID          EntryInProgress;
 };
 
 struct LDR_DATA_TABLE_ENTRY_ {
-   LIST_ENTRY_ InLoadOrderLinks;
-   LIST_ENTRY_ InMemoryOrderLinks;
+   LIST_ENTRY InLoadOrderLinks;
+   LIST_ENTRY InMemoryOrderLinks;
    union {
-       LIST_ENTRY_ InInitializationOrderLinks;
-       LIST_ENTRY_ InProgressLinks;
+       LIST_ENTRY InInitializationOrderLinks;
+       LIST_ENTRY InProgressLinks;
    };
-   voidp DllBase;
-   voidp EntryPoint;
+   PVOID DllBase;
+   PVOID EntryPoint;
    ULONG SizeOfImage;
-   UNICODE_STRING_ FullDllName;
-   UNICODE_STRING_ BaseDllName;
+   UNICODE_STRING FullDllName;
+   UNICODE_STRING BaseDllName;
    ULONG Flags;
    union {
        UCHAR FlagGroup [4];
@@ -531,15 +323,15 @@ struct LDR_DATA_TABLE_ENTRY_ {
    USHORT ObsoleteLoadCount;
    USHORT TlsIndex;
    union {
-       LIST_ENTRY_ HashLinks;
+       LIST_ENTRY HashLinks;
        struct {
-           voidp SectionPointer;
+           PVOID SectionPointer;
            ULONG CheckSum;
        };
    };
 };
 
-typedef voidp PEB_FREE_BLOCK_p;
+typedef PVOID PEB_FREE_BLOCK_p;
 
 struct PEB_FREE_BLOCK_
 {
@@ -553,17 +345,17 @@ struct RTL_USER_PROCESS_PARAMETERS_
     DWORD                   Length;                        //0x04
     DWORD                   Flags;                         //0x08
     DWORD                   DebugFlags;                    //0x0C
-    voidp                   ConsoleHandle;                 //0x10
+    PVOID                   ConsoleHandle;                 //0x10
     DWORD                   ConsoleFlags;                  //0x14
-    _HANDLE                  StdInputHandle;                //0x18
-    _HANDLE                  StdOutputHandle;               //0x1C
-    _HANDLE                  StdErrorHandle;                //0x20
-    UNICODE_STRING_          CurrentDirectoryPath;          //0x24
-    _HANDLE                  CurrentDirectoryHandle;        //0x2C
-    UNICODE_STRING_          DllPath;                       //0x30
-    UNICODE_STRING_          ImagePathName;                 //0x38
-    UNICODE_STRING_          CommandLine;                   //0x40
-    voidp                   Environment;                   //0x48
+    HANDLE                  StdInputHandle;                //0x18
+    HANDLE                  StdOutputHandle;               //0x1C
+    HANDLE                  StdErrorHandle;                //0x20
+    UNICODE_STRING          CurrentDirectoryPath;          //0x24
+    HANDLE                  CurrentDirectoryHandle;        //0x2C
+    UNICODE_STRING          DllPath;                       //0x30
+    UNICODE_STRING          ImagePathName;                 //0x38
+    UNICODE_STRING          CommandLine;                   //0x40
+    PVOID                   Environment;                   //0x48
     DWORD                   StartingPositionLeft;          //0x4C
     DWORD                   StartingPositionTop;           //0x50
     DWORD                   Width;                         //0x54
@@ -573,22 +365,22 @@ struct RTL_USER_PROCESS_PARAMETERS_
     DWORD                   ConsoleTextAttributes;         //0x64
     DWORD                   WindowFlags;                   //0x68
     DWORD                   ShowWindowFlags;               //0x6C
-    UNICODE_STRING_          WindowTitle;                   //0x70
-    UNICODE_STRING_          DesktopName;                   //0x78
-    UNICODE_STRING_          ShellInfo;                     //0x80
-    UNICODE_STRING_          RuntimeData;                   //0x88
+    UNICODE_STRING          WindowTitle;                   //0x70
+    UNICODE_STRING          DesktopName;                   //0x78
+    UNICODE_STRING          ShellInfo;                     //0x80
+    UNICODE_STRING          RuntimeData;                   //0x88
     RTL_DRIVE_LETTER_CURDIR_ DLCurrentDirectory[0x20];      //0x90
 };
 
-typedef voidp PEB_LDR_DATA_p;
-typedef voidp RTL_USER_PROCESS_PARAMETERS_p;
+typedef PVOID PEB_LDR_DATA_p;
+typedef PVOID RTL_USER_PROCESS_PARAMETERS_p;
 
-typedef voidp ACTIVATION_CONTEXT_DATA_p;
-typedef voidp ASSEMBLY_STORAGE_MAP_p;
-typedef voidp ACTIVATION_CONTEXT_DATA_p;
-typedef voidp ASSEMBLY_STORAGE_MAP_p;
+typedef PVOID ACTIVATION_CONTEXT_DATA_p;
+typedef PVOID ASSEMBLY_STORAGE_MAP_p;
+typedef PVOID ACTIVATION_CONTEXT_DATA_p;
+typedef PVOID ASSEMBLY_STORAGE_MAP_p;
 
-typedef voidp FLS_CALLBACK_INFO_p;
+typedef PVOID FLS_CALLBACK_INFO_p;
 
 
 //
@@ -626,24 +418,24 @@ struct PEB_
             BYTE                    SpareBits                    : 1;   //0x0003:7
         } bits;
     } byte3;
-    _HANDLE                          Mutant;                             //0x0004
-    voidp                           ImageBaseAddress;                   //0x0008
+    HANDLE                          Mutant;                             //0x0004
+    PVOID                           ImageBaseAddress;                   //0x0008
     PEB_LDR_DATA_p                   Ldr;                                //0x000C  (all loaded modules in process)
     RTL_USER_PROCESS_PARAMETERS_p    ProcessParameters;                  //0x0010
-    voidp                           SubSystemData;                      //0x0014
-    voidp                           ProcessHeap;                        //0x0018
-    RTL_CRITICAL_SECTION_p           FastPebLock;                        //0x001C
+    PVOID                           SubSystemData;                      //0x0014
+    PVOID                           ProcessHeap;                        //0x0018
+    PRTL_CRITICAL_SECTION           FastPebLock;                        //0x001C
     union
     {
-        voidp                       FastPebLockRoutine;                 //0x0020 (NT3.51-Win2k)
-        voidp                       SparePtr1;                          //0x0020 (early WS03)
-        voidp                       AtlThunkSListPtr;                   //0x0020 (late WS03+)
+        PVOID                       FastPebLockRoutine;                 //0x0020 (NT3.51-Win2k)
+        PVOID                       SparePtr1;                          //0x0020 (early WS03)
+        PVOID                       AtlThunkSListPtr;                   //0x0020 (late WS03+)
     } dword20;
     union
     {
-        voidp                       FastPebUnlockRoutine;               //0x0024 (NT3.51-XP)
-        voidp                       SparePtr2;                          //0x0024 (WS03)
-        voidp                       IFEOKey;                            //0x0024 (Vista+)
+        PVOID                       FastPebUnlockRoutine;               //0x0024 (NT3.51-XP)
+        PVOID                       SparePtr2;                          //0x0024 (WS03)
+        PVOID                       IFEOKey;                            //0x0024 (Vista+)
     } dword24;
     union
     {
@@ -660,8 +452,8 @@ struct PEB_
     } struct28;
     union
     {
-        voidp                       KernelCallbackTable;                //0x002C (Vista+)
-        voidp                       UserSharedInfoPtr;                  //0x002C (Vista+)
+        PVOID                       KernelCallbackTable;                //0x002C (Vista+)
+        PVOID                       UserSharedInfoPtr;                  //0x002C (Vista+)
     } dword2C;
     DWORD                           SystemReserved;                     //0x0030 (NT3.51-XP)
     //Microsoft seems to keep changing their mind with DWORD 0x34
@@ -686,46 +478,46 @@ struct PEB_
     {
         PEB_FREE_BLOCK_p             FreeList;                           //0x0038 (NT3.51-early Vista)
         DWORD                       SparePebPtr0;                       //0x0038 (last Vista)
-        voidp                       ApiSetMap;                          //0x0038 (Win7+)
+        PVOID                       ApiSetMap;                          //0x0038 (Win7+)
     } dword38;
     DWORD                           TlsExpansionCounter;                //0x003C
-    voidp                           TlsBitmap;                          //0x0040
+    PVOID                           TlsBitmap;                          //0x0040
     DWORD                           TlsBitmapBits[2];                   //0x0044
-    voidp                           ReadOnlySharedMemoryBase;           //0x004C
+    PVOID                           ReadOnlySharedMemoryBase;           //0x004C
     union
     {
-        voidp                       ReadOnlyShareMemoryHeap;            //0x0050 (NT3.51-WS03)
-        voidp                       HotpatchInformation;                //0x0050 (Vista+)
+        PVOID                       ReadOnlyShareMemoryHeap;            //0x0050 (NT3.51-WS03)
+        PVOID                       HotpatchInformation;                //0x0050 (Vista+)
     } dword50;
-    voidp                          ReadOnlyStaticServerData;           //0x0054 really void**
-    voidp                           AnsiCodePageData;                   //0x0058
-    voidp                           OemCodePageData;                    //0x005C
-    voidp                           UnicodeCaseTableData;               //0x0060
+    PVOID                          ReadOnlyStaticServerData;           //0x0054 really void**
+    PVOID                           AnsiCodePageData;                   //0x0058
+    PVOID                           OemCodePageData;                    //0x005C
+    PVOID                           UnicodeCaseTableData;               //0x0060
     DWORD                           NumberOfProcessors;                 //0x0064
     DWORD                           NtGlobalFlag;                       //0x0068
-    LARGE_INTEGER_                   CriticalSectionTimeout;             //0x0070
+    LARGE_INTEGER                   CriticalSectionTimeout;             //0x0070
     DWORD                           HeapSegmentReserve;                 //0x0078
     DWORD                           HeapSegmentCommit;                  //0x007C
     DWORD                           HeapDeCommitTotalFreeThreshold;     //0x0080
     DWORD                           HeapDeCommitFreeBlockThreshold;     //0x0084
     DWORD                           NumberOfHeaps;                      //0x0088
     DWORD                           MaximumNumberOfHeaps;               //0x008C
-    voidp                           ProcessHeaps;                       //0x0090 really void**
-    voidp                           GdiSharedHandleTable;               //0x0094
+    PVOID                           ProcessHeaps;                       //0x0090 really void**
+    PVOID                           GdiSharedHandleTable;               //0x0094
 
     //end of NT 3.51 members / members that follow available on NT 4.0 and up
 
-    voidp                           ProcessStarterHelper;               //0x0098
+    PVOID                           ProcessStarterHelper;               //0x0098
     DWORD                           GdiDCAttributeList;                 //0x009C
     union
     {
         struct
         {
-            voidp                   LoaderLock;                         //0x00A0 (NT4)
+            PVOID                   LoaderLock;                         //0x00A0 (NT4)
         } nt4;
         struct
         {
-            RTL_CRITICAL_SECTION_p   LoaderLock;                         //0x00A0 (Win2k+)
+            PRTL_CRITICAL_SECTION   LoaderLock;                         //0x00A0 (Win2k+)
         } win2k;
     } dwordA0;
     DWORD                           OSMajorVersion;                     //0x00A4
@@ -742,18 +534,18 @@ struct PEB_
         KAFFINITY                   ActiveProcessAffinityMask;          //0x00C0 (late Vista+)
     } dwordC0;
     DWORD                           GdiHandleBuffer[0x22];              //0x00C4
-    voidp                           PostProcessInitRoutine;             //0x014C / void (*PostProcessInitRoutine) (void);
+    PVOID                           PostProcessInitRoutine;             //0x014C / void (*PostProcessInitRoutine) (void);
 
     //members that follow available on Windows 2000 and up
 
-    voidp                           TlsExpansionBitmap;                 //0x0150
+    PVOID                           TlsExpansionBitmap;                 //0x0150
     DWORD                           TlsExpansionBitmapBits[0x20];       //0x0154
     DWORD                           SessionId;                          //0x01D4
-    ULARGE_INTEGER_                  AppCompatFlags;                     //0x01D8
-    ULARGE_INTEGER_                  AppCompatFlagsUser;                 //0x01E0
-    voidp                           pShimData;                          //0x01E8
-    voidp                           AppCompatInfo;                      //0x01EC
-    UNICODE_STRING_                  CSDVersion;                         //0x01F0
+    ULARGE_INTEGER                  AppCompatFlags;                     //0x01D8
+    ULARGE_INTEGER                  AppCompatFlagsUser;                 //0x01E0
+    PVOID                           pShimData;                          //0x01E8
+    PVOID                           AppCompatInfo;                      //0x01EC
+    UNICODE_STRING                  CSDVersion;                         //0x01F0
 
     //members that follow available on Windows XP and up
 
@@ -766,24 +558,24 @@ struct PEB_
     //members that follow available on Windows Server 2003 and up
 
     FLS_CALLBACK_INFO_p              FlsCallback;                        //0x020C
-    LIST_ENTRY_                      FlsListHead;                        //0x0210
-    voidp                           FlsBitmap;                          //0x0218
+    LIST_ENTRY                      FlsListHead;                        //0x0210
+    PVOID                           FlsBitmap;                          //0x0218
     DWORD                           FlsBitmapBits[4];                   //0x021C
     DWORD                           FlsHighIndex;                       //0x022C
 
     //members that follow available on Windows Vista and up
 
-    voidp                           WerRegistrationData;                //0x0230
-    voidp                           WerShipAssertPtr;                   //0x0234
+    PVOID                           WerRegistrationData;                //0x0230
+    PVOID                           WerShipAssertPtr;                   //0x0234
 
     //members that follow available on Windows 7 BETA and up
 
     union
     {
-        voidp                       pContextData;                       //0x0238 (prior to Windows 8)
-        voidp                       pUnused;                            //0x0238 (Windows 8)
+        PVOID                       pContextData;                       //0x0238 (prior to Windows 8)
+        PVOID                       pUnused;                            //0x0238 (Windows 8)
     } dword238;
-    voidp                           pImageHeaderHash;                   //0x023C
+    PVOID                           pImageHeaderHash;                   //0x023C
 
     //members that follow available on Windows 7 RTM and up
 
@@ -831,11 +623,11 @@ struct GDI_TEB_BATCH_
 struct TEB_ACTIVE_FRAME_CONTEXT_
 {
      DWORD  Flags;
-     CHARp  FrameName;
+     PCHAR  FrameName;
 };
 
-typedef voidp TEB_ACTIVE_FRAME_p;
-typedef voidp TEB_ACTIVE_FRAME_CONTEXT_p;
+typedef PVOID TEB_ACTIVE_FRAME_p;
+typedef PVOID TEB_ACTIVE_FRAME_CONTEXT_p;
 
 struct TEB_ACTIVE_FRAME_
 {
@@ -844,9 +636,9 @@ struct TEB_ACTIVE_FRAME_
      TEB_ACTIVE_FRAME_CONTEXT_p  CONTEXT_;
 };
 
-typedef voidp PEB_p;
-typedef voidp TEB_p;
-typedef voidp TEB_ACTIVE_FRAME_p;
+typedef PVOID PEB_p;
+typedef PVOID TEB_p;
+typedef PVOID TEB_ACTIVE_FRAME_p;
 
 //
 // TEB_ (Thread Environment Block) a.k.a. TIB (Thread Information Block) 32-bit
@@ -867,32 +659,32 @@ struct TEB_
 {
     //NT_TIB structure portion
     EXCEPTION_REGISTRATION_p     ExceptionList;                              //0x0000 / Current Structured Exception Handling (SEH) frame
-    voidp                       StackBase;                                  //0x0004 / Bottom of stack (high address)
-    voidp                       StackLimit;                                 //0x0008 / Ceiling of stack (low address)
-    voidp                       SubSystemTib;                               //0x000C
+    PVOID                       StackBase;                                  //0x0004 / Bottom of stack (high address)
+    PVOID                       StackLimit;                                 //0x0008 / Ceiling of stack (low address)
+    PVOID                       SubSystemTib;                               //0x000C
     union
     {
-        voidp                   FiberData;                                  //0x0010
+        PVOID                   FiberData;                                  //0x0010
         DWORD                   Version;                                    //0x0010
     } dword10;
-    voidp                       ArbitraryUserPointer;                       //0x0014
+    PVOID                       ArbitraryUserPointer;                       //0x0014
     TEB_p                        Self;                                       //0x0018
     //NT_TIB ends (NT subsystem independent part)
 
-    voidp                       EnvironmentPointer;                         //0x001C
-    CLIENT_ID_                   ClientId;                                   //0x0020
+    PVOID                       EnvironmentPointer;                         //0x001C
+    CLIENT_ID                   ClientId;                                   //0x0020
     //                          ClientId.ProcessId                          //0x0020 / value retrieved by GetCurrentProcessId()
     //                          ClientId.ThreadId                           //0x0024 / value retrieved by GetCurrentThreadId()
-    voidp                       ActiveRpcHandle;                            //0x0028
-    voidp                       ThreadLocalStoragePointer;                  //0x002C
+    PVOID                       ActiveRpcHandle;                            //0x0028
+    PVOID                       ThreadLocalStoragePointer;                  //0x002C
     PEB_p                       ProcessEnvironmentBlock;                    //0x0030
     DWORD                       LastErrorValue;                             //0x0034
     DWORD                       CountOfOwnedCriticalSections;               //0x0038
-    voidp                       CsrClientThread;                            //0x003C
-    voidp                       Win32ThreadInfo;                            //0x0040
+    PVOID                       CsrClientThread;                            //0x003C
+    PVOID                       Win32ThreadInfo;                            //0x0040
     DWORD                       User32Reserved[0x1A];                       //0x0044
     DWORD                       UserReserved[5];                            //0x00AC
-    voidp                       WOW32Reserved;                              //0x00C0 / user-mode 32-bit (WOW64) -> 64-bit CONTEXT_ switch function prior to kernel-mode transition
+    PVOID                       WOW32Reserved;                              //0x00C0 / user-mode 32-bit (WOW64) -> 64-bit CONTEXT_ switch function prior to kernel-mode transition
     LCID                        CurrentLocale;                              //0x00C4
     DWORD                       FpSoftwareStatusRegister;                   //0x00C8
     union
@@ -901,7 +693,7 @@ struct TEB_
         struct
         {
             DWORD               Reserved1[0x16];                            //0x00CC
-            voidp               pKThread;                                   //0x0124 / pointer to KTHREAD (ETHREAD) structure
+            PVOID               pKThread;                                   //0x0124 / pointer to KTHREAD (ETHREAD) structure
             DWORD               Reserved2[0x1F];                            //0x0128
         } kernelInfo;
         struct
@@ -921,15 +713,15 @@ struct TEB_
         } xp;
         struct
         {
-            voidp               ActivationContextStackPointer;              //0x01A8 (WS03+)
+            PVOID               ActivationContextStackPointer;              //0x01A8 (WS03+)
             union
             {
                 BYTE            SpareBytes1[0x24];                          //0x01AC (WS03-Win8.1)
                 struct
                 {
-                    voidp       InstrumentationCallbackSp;                  //0x01AC (Win10+)
-                    voidp       InstrumentationCallbackPreviousPc;          //0x01B0 (Win10+)
-                    voidp       InstrumentationCallbackPreviousSp;          //0x01B4 (Win10+)
+                    PVOID       InstrumentationCallbackSp;                  //0x01AC (Win10+)
+                    PVOID       InstrumentationCallbackPreviousPc;          //0x01B0 (Win10+)
+                    PVOID       InstrumentationCallbackPreviousSp;          //0x01B4 (Win10+)
                     BOOLEAN     InstrumentationCallbackDisabled;            //0x01B8 (Win10+)
                     BYTE        SpareBytes[0x17];                           //0x01B9 (Win10+)
                 } win10;
@@ -942,29 +734,29 @@ struct TEB_
         } lateWs03;
     } dword1A8;
     GDI_TEB_BATCH_               GdiTebBatch;                                //0x01D4
-    CLIENT_ID_                   RealClientId;                               //0x06B4
-    _HANDLE                      GdiCachedProcessHandle;                     //0x06BC
+    CLIENT_ID                   RealClientId;                               //0x06B4
+    HANDLE                      GdiCachedProcessHandle;                     //0x06BC
     DWORD                       GdiClientPID;                               //0x06C0
     DWORD                       GdiClientTID;                               //0x06C4
-    voidp                       GdiThreadLocalInfo;                         //0x06C8
+    PVOID                       GdiThreadLocalInfo;                         //0x06C8
     DWORD                       Win32ClientInfo[0x3E];                      //0x06CC
-    voidp                       glDispatchTable[0xE9];                      //0x07C4
+    PVOID                       glDispatchTable[0xE9];                      //0x07C4
     DWORD                       glReserved1[0x1D];                          //0x0B68
-    voidp                       glReserved2;                                //0x0BDC
-    voidp                       glSectionInfo;                              //0x0BE0
-    voidp                       glSection;                                  //0x0BE4
-    voidp                       glTable;                                    //0x0BE8
-    voidp                       glCurrentRC;                                //0x0BEC
-    voidp                       glContext;                                  //0x0BF0
+    PVOID                       glReserved2;                                //0x0BDC
+    PVOID                       glSectionInfo;                              //0x0BE0
+    PVOID                       glSection;                                  //0x0BE4
+    PVOID                       glTable;                                    //0x0BE8
+    PVOID                       glCurrentRC;                                //0x0BEC
+    PVOID                       glContext;                                  //0x0BF0
     int32_t /*NTSTATUS*/        LastStatusValue;                            //0x0BF4
-    UNICODE_STRING_              StaticUnicodeString;                        //0x0BF8
+    UNICODE_STRING              StaticUnicodeString;                        //0x0BF8
     WCHAR                       StaticUnicodeBuffer[0x105];                 //0x0C00
-    voidp                       DeallocationStack;                          //0x0E0C
-    voidp                       TlsSlots[0x40];                             //0x0E10
-    LIST_ENTRY_                  TlsLinks;                                   //0x0F10
-    voidp                       Vdm;                                        //0x0F18
-    voidp                       ReservedForNtRpc;                           //0x0F1C
-    voidp                       DbgSsReserved[2];                           //0x0F20
+    PVOID                       DeallocationStack;                          //0x0E0C
+    PVOID                       TlsSlots[0x40];                             //0x0E10
+    LIST_ENTRY                  TlsLinks;                                   //0x0F10
+    PVOID                       Vdm;                                        //0x0F18
+    PVOID                       ReservedForNtRpc;                           //0x0F1C
+    PVOID                       DbgSsReserved[2];                           //0x0F20
 
     //end of NT 3.51 members / members that follow available on NT 4.0 and up
 
@@ -987,13 +779,13 @@ struct TEB_
                 struct
                 {
                     DWORD       Instrumentation[0x0E];                      //0x0F2C (late WS03+)
-                    voidp       SubProcessTag;                              //0x0F64 (late WS03+)
+                    PVOID       SubProcessTag;                              //0x0F64 (late WS03+)
                 } beforeVista;
                 struct
                 {
                     DWORD       Instrumentation[9];                         //0x0F2C (Vista+)
-                    GUID_        ActivityId;                                 //0x0F50 (Vista+)
-                    voidp       SubProcessTag;                              //0x0F60 (Vista+)
+                    GUID        ActivityId;                                 //0x0F50 (Vista+)
+                    PVOID       SubProcessTag;                              //0x0F60 (Vista+)
                     union
                     {
                         DWORD   EtwLocalData;                               //0x0F64 (WIN8 PRE-RTM)
@@ -1002,10 +794,10 @@ struct TEB_
 
                 } vista;
             } dwordF2C;
-            voidp               EtwTraceData;                               //0x0F68 (late WS03+)
+            PVOID               EtwTraceData;                               //0x0F68 (late WS03+)
         } ws03;
     } dwordF2C;
-    voidp                       WinSockData;                                //0x0F6C
+    PVOID                       WinSockData;                                //0x0F6C
     DWORD                       GdiBatchCount;                              //0x0F70
     union
     {
@@ -1028,15 +820,15 @@ struct TEB_
             } u;
             BOOLEAN             IdealProcessor;                             //0x0F77 (NT4-Vista)
         } beforeWin7;
-        PROCESSOR_NUMBER_        CurrentIdealProcessor;                      //0x0F74 (Win7+)
+        PROCESSOR_NUMBER        CurrentIdealProcessor;                      //0x0F74 (Win7+)
     } dwordF74;
     union
     {
         DWORD                   Spare3;                                     //0x0F78 (NT4-early WS03)
         DWORD                   GuaranteedStackBytes;                       //0x0F78 (late WS03+)
     } dwordF78;
-    voidp                       ReservedForPerf;                            //0x0F7C
-    voidp                       ReservedForOle;                             //0x0F80
+    PVOID                       ReservedForPerf;                            //0x0F7C
+    PVOID                       ReservedForOle;                             //0x0F80
     DWORD                       WaitingOnLoaderLock;                        //0x0F84
 
     //members that follow available on Windows 2000 and up
@@ -1046,8 +838,8 @@ struct TEB_
         struct
         {
             //Wx86ThreadState structure
-            DWORDp              CallBx86Eip;                                //0x0F88 (Win2k-early WS03)
-            voidp               DeallocationCpu;                            //0x0F8C (Win2k-early WS03)
+            PDWORD              CallBx86Eip;                                //0x0F88 (Win2k-early WS03)
+            PVOID               DeallocationCpu;                            //0x0F8C (Win2k-early WS03)
             BYTE                UseKnownWx86Dll;                            //0x0F90 (Win2k-early WS03)
             CHAR                OleStubInvoked;                             //0x0F91 (Win2k-early WS03)
             BYTE                Padding[2];                                 //0x0F92
@@ -1056,33 +848,33 @@ struct TEB_
         {
             union
             {
-                voidp           SparePointer1;                              //0x0F88 (late WS03)
-                voidp           SavedPriorityState;                         //0x0F88 (Vista+)
+                PVOID           SparePointer1;                              //0x0F88 (late WS03)
+                PVOID           SavedPriorityState;                         //0x0F88 (Vista+)
             } dwordF88;
             union
             {
-                voidp           SoftPatchPtr1;                              //0x0F8C (late WS03-Win7)
-                voidp           ReservedForCodeCoverage;                    //0x0F8C (Win8+)
+                PVOID           SoftPatchPtr1;                              //0x0F8C (late WS03-Win7)
+                PVOID           ReservedForCodeCoverage;                    //0x0F8C (Win8+)
             } dwordF8C;
             union
             {
-                voidp           SoftPatchPtr2;                              //0x0F90 (late WS03)
-                voidp           ThreadPoolData;                             //0x0F90 (Vista+)
+                PVOID           SoftPatchPtr2;                              //0x0F90 (late WS03)
+                PVOID           ThreadPoolData;                             //0x0F90 (Vista+)
             } dwordF90;
         } lateWs03;
     } dwordF88;
-    voidp                       TlsExpansionSlots;                          //0x0F94
+    PVOID                       TlsExpansionSlots;                          //0x0F94
     union
     {
         LCID                    ImpersonationLocale;                        //0x0F98 (Win2k-Vista)
         DWORD                   MuiGeneration;                              //0x0F98 (Win7+)
     } dwordF98;
     DWORD                       IsImpersonating;                            //0x0F9C
-    voidp                       NlsCache;                                   //0x0FA0
+    PVOID                       NlsCache;                                   //0x0FA0
 
     //members that follow available on Windows XP and up
 
-    voidp                       pShimData;                                  //0x0FA4
+    PVOID                       pShimData;                                  //0x0FA4
     union
     {
         DWORD                   HeapVirtualAffinity;                        //0x0FA8 (XP-Win7)
@@ -1092,14 +884,14 @@ struct TEB_
             WORD                LowFragHeapDataSlot;                        //0x0FAA (Win8+)
         } win8;
     } dwordFA8;
-    _HANDLE                      CurrentTransactionHandle;                   //0x0FAC
+    HANDLE                      CurrentTransactionHandle;                   //0x0FAC
     TEB_ACTIVE_FRAME_p           ActiveFrame;                                //0x0FB0
 
     //members that follow available on Windows XP SP2 and up
 
     union
     {
-        voidp                   FlsData;                                    //0x0FB4 (WS03+)
+        PVOID                   FlsData;                                    //0x0FB4 (WS03+)
         struct
         {
             BOOLEAN             SafeThunkCall;                              //0x0FB4 (XP SP2)
@@ -1113,13 +905,13 @@ struct TEB_
             BOOLEAN             SafeThunkCall;                              //0x0FB8 (late WS03)
             BOOLEAN             BooleanSpare[3];                            //0x0FB9 (late WS03)
         } ws03;
-        voidp                   PreferredLanguages;                         //0x0FB8 (Vista+)
+        PVOID                   PreferredLanguages;                         //0x0FB8 (Vista+)
     } dwordFB8;
 
     //members that follow available on Windows Vista and up
 
-    voidp                       UserPrefLanguages;                          //0x0FBC
-    voidp                       MergedPrefLanguages;                        //0x0FC0
+    PVOID                       UserPrefLanguages;                          //0x0FBC
+    PVOID                       MergedPrefLanguages;                        //0x0FC0
     DWORD                       MuiImpersonation;                           //0x0FC4
     union
     {
@@ -1148,9 +940,9 @@ struct TEB_
             WORD                SessionAware         : 1;                   //0x0FCA:0x0B
         } bits;
     } wordFCA;
-    voidp                       TxnScopeEnterCallback;                      //0x0FCC
-    voidp                       TxnScopeExitCallback;                       //0x0FD0
-    voidp                       TxnScopeContext;                            //0x0FD4
+    PVOID                       TxnScopeEnterCallback;                      //0x0FCC
+    PVOID                       TxnScopeExitCallback;                       //0x0FD0
+    PVOID                       TxnScopeContext;                            //0x0FD4
     DWORD                       LockCount;                                  //0x0FD8
     union
     {
@@ -1165,7 +957,7 @@ struct TEB_
         {
             QWORD               LastSwitchTime;                             //0x0FE0 (Vista)
             QWORD               TotalSwitchOutTime;                         //0x0FE8 (Vista)
-            LARGE_INTEGER_       WaitReasonBitMap;                           //0x0FF0 (Vista)
+            LARGE_INTEGER       WaitReasonBitMap;                           //0x0FF0 (Vista)
 
             //end of Vista members
 
@@ -1173,18 +965,18 @@ struct TEB_
 
         struct
         {
-            voidp               ResourceRetValue;                           //0x0FE0 (Win7+)
+            PVOID               ResourceRetValue;                           //0x0FE0 (Win7+)
 
             //end of Windows 7 members (TEB_ shrunk after Vista)
 
-            voidp               ReservedForWdf;                             //0x0FE4 (Win8+)
+            PVOID               ReservedForWdf;                             //0x0FE4 (Win8+)
 
             //end of Windows 8 members
 
             //members that follow available on Windows 10 and up
             QWORD               ReservedForCrt;                             //0x0FE8
 
-            GUID_               EffectiveContainerId;                       //0x0FF0
+            GUID                EffectiveContainerId;                       //0x0FF0
 
             //end of Windows 10/11
         } afterVista;

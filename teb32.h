@@ -955,8 +955,8 @@ struct TEB_
     {
         struct
         {
-            QWORD               LastSwitchTime;                             //0x0FE0 (Vista)
-            QWORD               TotalSwitchOutTime;                         //0x0FE8 (Vista)
+            LONGLONG            LastSwitchTime;                             //0x0FE0 (Vista)
+            LONGLONG            TotalSwitchOutTime;                         //0x0FE8 (Vista)
             LARGE_INTEGER       WaitReasonBitMap;                           //0x0FF0 (Vista)
 
             //end of Vista members
@@ -974,7 +974,7 @@ struct TEB_
             //end of Windows 8 members
 
             //members that follow available on Windows 10 and up
-            QWORD               ReservedForCrt;                             //0x0FE8
+            LONGLONG            ReservedForCrt;                             //0x0FE8
 
             GUID                EffectiveContainerId;                       //0x0FF0
 
